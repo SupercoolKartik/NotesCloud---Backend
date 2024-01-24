@@ -3,6 +3,10 @@ import { Router } from "express";
 import User from "../models/User.js";
 import { body, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
+const secSign = process.env.SECRET_SIGN;
 
 import bcrypt from "bcrypt";
 
@@ -36,14 +40,22 @@ router.post(
       // Hashing the password
       const saltRounds = 10;
       const hashedPass = await bcrypt.hash(req.body.password, saltRounds);
-      
+
       user = await User.create({
         username: req.body.username,
         email: req.body.email,
         password: hashedPass,
       });
 
-      res.json(user);
+      const tokenData = {
+        user: {
+          name: user.username,
+          id: user.id,
+        },
+      };
+      const authToken = jwt.sign(tokenData, secSign);
+      console.log("Token is ", token);
+      res.json({ authToken });
     }
 
     //If there are errors
