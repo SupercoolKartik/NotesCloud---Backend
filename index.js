@@ -4,7 +4,7 @@ import connectToMongo from "./db.js";
 connectToMongo();
 
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
 app.use(express.json()); // Parse incoming requests data as JSON
 
