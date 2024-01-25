@@ -15,6 +15,9 @@ app.get("/", (req, res) => {
 import authRouter from "./routes/auth.js";
 app.use("/api/auth", authRouter);
 
+import notesRouter from "./routes/notes.js";
+app.use("/api/notes", notesRouter);
+
 //App Listner
 app.listen(PORT, () => {
   console.log(`Server is running on port http://localhost:${PORT}`);
