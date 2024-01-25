@@ -23,18 +23,12 @@ router.post(
     body("password", "Password is required").notEmpty(),
   ],
   async (req, res) => {
-    console.log(req.body.email);
-    console.log(req.body.password);
-
     const result = validationResult(req);
-    console.log("Original password", req.body.password);
-
-    //If there are no errors
+    ////If there are no errors
     if (result.isEmpty()) {
       //Logic to find out if a user with same email already exists
-      const user = await User.findOne({ email: req.body.email }).exec();
+      let user = await User.findOne({ email: req.body.email }).exec();
       if (user) {
-        console.log("The user with existing email", user);
         return res.send("Email is not unique!");
       }
 
@@ -42,12 +36,14 @@ router.post(
       const saltRounds = 10;
       const hashedPass = await bcrypt.hash(req.body.password, saltRounds);
 
+      //Creating a new user
       user = await User.create({
         username: req.body.username,
         email: req.body.email,
         password: hashedPass,
       });
 
+      //Sending the Authorisation Token to the user
       const tokenData = {
         user: {
           name: user.username,
@@ -59,7 +55,7 @@ router.post(
       res.json({ authToken });
     }
 
-    //If there are errors
+    ////If there are errors
     else {
       res.send({ errors: result.array() });
     }
@@ -83,6 +79,7 @@ router.post(
       return res.status(401).send("User not found.");
     }
 
+    // Comparing the passwords
     const compareResult = await bcrypt.compare(
       req.body.password,
       user.password

@@ -6,8 +6,6 @@ const secSign = process.env.SECRET_SIGN;
 
 const fetchuser = async (req, res, next) => {
   const token = req.header("auth-token");
-  console.log("auth-token is ", token);
-  console.log("secSign is ", secSign);
   // Check if not token is supplied:
   if (!token) {
     return res.status(401).send({ msg: "No Token Provided" });
