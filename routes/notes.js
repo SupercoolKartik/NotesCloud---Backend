@@ -6,7 +6,7 @@ import fetchuser from "../middleware/fetchuser.js";
 
 const router = express.Router();
 
-//Route 1: create a note
+//Route 1: create a note (Login Required)
 router.post(
   "/createnote",
   [
@@ -39,7 +39,7 @@ router.post(
   }
 );
 
-//Route 2: fetch all the notes
+//Route 2: fetch all the notes (Login Required)
 router.get("/fetchallnotes", fetchuser, async (req, res) => {
   try {
     const notes = await Note.find({ user: req.userId });
@@ -47,6 +47,79 @@ router.get("/fetchallnotes", fetchuser, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal Server Error");
+  }
+});
+
+//Route 3: Update a note (Login Required)
+router.put(
+  "/updatenote/:id",
+  [
+    //Validation Checks
+    body("title", "Title cannot be empty").notEmpty().isLength({ min: 3 }),
+    body("description", "description cannot be empty")
+      .notEmpty()
+      .isLength({ min: 5 }),
+  ],
+  fetchuser,
+  async (req, res) => {
+    const result = validationResult(req);
+    if (result.isEmpty()) {
+      //Creating a new Note
+      const { title, description, tag } = req.body;
+      const newNote = {};
+      if (title) {
+        newNote.title = title;
+      }
+      if (description) {
+        newNote.description = description;
+      }
+      if (tag) {
+        newNote.tag = tag;
+      }
+
+      //Check if the Note with the provided id exists
+      let note = await Note.findById(req.params.id);
+      if (!note) {
+        return res.status(400).json({ msg: "No note with that ID" });
+      }
+
+      //Make sure the logged in User is the one who created the Note
+      if (req.userId !== note.user.toString()) {
+        return res.status(401).json({ msg: "User not authorized" });
+      }
+
+      //Find the note to be Updated and Update it
+      note = await Note.findByIdAndUpdate(
+        req.params.id,
+        { $set: newNote },
+        { new: true }
+      );
+      res.json(note);
+    } else {
+      return res.status(400).json({ errors: result.array() });
+    }
+  }
+);
+router.delete("/deletenote/:id", fetchuser, async (req, res) => {
+  try {
+    //Check if the Note with the provided id exists
+    let note = await Note.findById(req.params.id);
+    if (!note) {
+      return res.status(400).json({ msg: "No note with that ID" });
+    }
+
+    //Make sure the logged in User is the one who created the Note
+    if (req.userId !== note.user.toString()) {
+      return res
+        .status(401)
+        .json({ msg: "Please authenticate using a valid token" });
+    }
+
+    //Find the note to be Deleted and Delete it
+    note = await Note.findByIdAndDelete(req.params.id);
+    res.json({ Success: "The note has been deleted", note: note });
+  } catch {
+    return res.status(400).send("Internal server error");
   }
 });
 
