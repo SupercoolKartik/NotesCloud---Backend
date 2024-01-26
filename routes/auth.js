@@ -25,42 +25,47 @@ router.post(
     body("password", "Password is required!").isLength({ min: 5 }),
   ],
   async (req, res) => {
-    const result = validationResult(req);
-    ////If there are no errors
-    if (result.isEmpty()) {
-      //Logic to find out if a user with same email already exists
-      let user = await User.findOne({ email: req.body.email }).exec();
-      if (user) {
-        //400 Bad Request
-        return res.status(400).send("Email is not unique!");
+    try {
+      const result = validationResult(req);
+      ////If there are no errors
+      if (result.isEmpty()) {
+        //Logic to find out if a user with same email already exists
+        let user = await User.findOne({ email: req.body.email }).exec();
+        if (user) {
+          //400 Bad Request
+          return res.status(400).send("Email is not unique!");
+        }
+
+        // Hashing the password
+        const saltRounds = 10;
+        const hashedPass = await bcrypt.hash(req.body.password, saltRounds);
+
+        //Creating a new user
+        user = await User.create({
+          username: req.body.username,
+          email: req.body.email,
+          password: hashedPass,
+        });
+
+        //Sending the Authorisation Token to the user
+        const tokenData = {
+          user: {
+            name: user.username,
+            id: user.id,
+          },
+        };
+        const authToken = jwt.sign(tokenData, secSign);
+        res.json({ authToken });
       }
 
-      // Hashing the password
-      const saltRounds = 10;
-      const hashedPass = await bcrypt.hash(req.body.password, saltRounds);
-
-      //Creating a new user
-      user = await User.create({
-        username: req.body.username,
-        email: req.body.email,
-        password: hashedPass,
-      });
-
-      //Sending the Authorisation Token to the user
-      const tokenData = {
-        user: {
-          name: user.username,
-          id: user.id,
-        },
-      };
-      const authToken = jwt.sign(tokenData, secSign);
-      res.json({ authToken });
-    }
-
-    ////If there are Validtion errors
-    else {
-      // 400 Bad Request
-      res.status(400).send({ errors: result.array() });
+      ////If there are Validtion errors
+      else {
+        // 400 Bad Request
+        res.status(400).send({ errors: result.array() });
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(500).send("Internal Server Error");
     }
   }
 );
@@ -75,27 +80,33 @@ router.post(
     }),
   ],
   async (req, res) => {
-    const result = validationResult(req);
-    if (result.isEmpty()) {
-      let user = await User.findOne({ email: req.body.email }).exec();
-      if (!user) {
-        //404 User Not Found
-        return res.status(404).send("User not found.");
-      }
+    try {
+      const result = validationResult(req);
+      if (result.isEmpty()) {
+        let user = await User.findOne({ email: req.body.email }).exec();
+        if (!user) {
+          //404 User Not Found
+          return res.status(404).send("User not found.");
+        }
 
-      // Comparing the passwords
-      const compareResult = await bcrypt.compare(
-        req.body.password,
-        user.password
-      );
-      if (!compareResult) {
-        return res.status(401).send("Passwords don't match!");
+        // Comparing the passwords
+        const compareResult = await bcrypt.compare(
+          req.body.password,
+          user.password
+        );
+
+        if (!compareResult) {
+          return res.status(401).send("Passwords don't match!");
+        } else {
+          return res.send("User verified successfully!");
+        }
       } else {
-        return res.send("User verified successfully!");
+        //400 Bad Request
+        return res.status(400).send({ errors: result.array() });
       }
-    } else {
-      //400 Bad Request
-      return res.status(400).send({ errors: result.array() });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Internal Server Error");
     }
   }
 );
@@ -109,6 +120,7 @@ router.post("/getuserdata", fetchuser, async (req, res) => {
     }
     res.send(user);
   } catch (error) {
+    console.log(error);
     res.status(500).send("Internal Server Error");
   }
 });

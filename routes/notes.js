@@ -6,11 +6,11 @@ import fetchuser from "../middleware/fetchuser.js";
 
 const router = express.Router();
 
-//ROUTE 1: Create a note (Login Required)
+// ROUTE 1: Create a note (Login Required)
 router.post(
   "/createnote",
   [
-    //Validation Checks
+    // Validation Checks
     body("title", "Title should be of minimum 3 characters long").isLength({
       min: 3,
     }),
@@ -24,7 +24,7 @@ router.post(
     try {
       const result = validationResult(req);
       if (result.isEmpty()) {
-        //Creating a new Note
+        // Creating a new Note
         const note = await Note.create({
           user: req.userId,
           title: req.body.title,
@@ -43,7 +43,7 @@ router.post(
   }
 );
 
-//ROUTE 2: Fetch all the notes (Login Required)
+// ROUTE 2: Fetch all the notes (Login Required)
 router.get("/fetchallnotes", fetchuser, async (req, res) => {
   try {
     const notes = await Note.find({ user: req.userId });
@@ -54,78 +54,86 @@ router.get("/fetchallnotes", fetchuser, async (req, res) => {
   }
 });
 
-//ROUTE 3: Update a note (Login Required)
+// ROUTE 3: Update a note (Login Required)
 router.put(
   "/updatenote/:id",
   [
-    //Validation Checks
+    // Validation Checks
     body("title", "Title cannot be empty").notEmpty().isLength({ min: 3 }),
-    body("description", "description cannot be empty")
+    body("description", "Description cannot be empty")
       .notEmpty()
       .isLength({ min: 5 }),
   ],
   fetchuser,
   async (req, res) => {
-    const result = validationResult(req);
-    if (result.isEmpty()) {
-      //Creating a new Note
-      const { title, description, tag } = req.body;
-      const newNote = {};
-      if (title) {
-        newNote.title = title;
-      }
-      if (description) {
-        newNote.description = description;
-      }
-      if (tag) {
-        newNote.tag = tag;
-      }
+    try {
+      const result = validationResult(req);
+      if (result.isEmpty()) {
+        // Creating a new Note
+        const { title, description, tag } = req.body;
+        const newNote = {};
+        if (title) {
+          newNote.title = title;
+        }
+        if (description) {
+          newNote.description = description;
+        }
+        if (tag) {
+          newNote.tag = tag;
+        }
 
-      //Check if the Note with the provided id exists
-      let note = await Note.findById(req.params.id);
-      if (!note) {
-        return res.status(404).json({ msg: "No note with that ID" });
-      }
+        // Check if the Note with the provided id exists
+        let note = await Note.findById(req.params.id);
+        if (!note) {
+          return res.status(404).json({ msg: "No note with that ID" });
+        }
 
-      //Make sure the logged in User is the one who created the Note
-      if (req.userId !== note.user.toString()) {
-        return res.status(401).json({ msg: "User not authorized" });
-      }
+        // Make sure the logged-in User is the one who created the Note
+        if (req.userId !== note.user.toString()) {
+          return res.status(401).json({ msg: "User not authorized" });
+        }
 
-      //Find the note to be Updated and Update it
-      note = await Note.findByIdAndUpdate(
-        req.params.id,
-        { $set: newNote },
-        { new: true }
-      );
-      res.json(note);
-    } else {
-      return res.status(400).json({ errors: result.array() });
+        // Find the note to be Updated and Update it
+        note = await Note.findByIdAndUpdate(
+          req.params.id,
+          { $set: newNote },
+          { new: true }
+        );
+        res.json(note);
+      } else {
+        // 400 Bad Request for validation errors
+        res.status(400).json({ errors: result.array() });
+      }
+    } catch (error) {
+      // Handle other errors
+      console.error(error);
+      res.status(500).send("Internal Server Error");
     }
   }
 );
 
-//ROUTE 4: Delete a note (Login Required)
+// ROUTE 4: Delete a note (Login Required)
 router.delete("/deletenote/:id", fetchuser, async (req, res) => {
   try {
-    //Check if the Note with the provided id exists
+    // Check if the Note with the provided id exists
     let note = await Note.findById(req.params.id);
     if (!note) {
       return res.status(404).json({ msg: "No note with that ID" });
     }
 
-    //Make sure the logged in User is the one who created the Note
+    // Make sure the logged-in User is the one who created the Note
     if (req.userId !== note.user.toString()) {
       return res
         .status(401)
         .json({ msg: "Please authenticate using a valid token" });
     }
 
-    //Find the note to be Deleted and Delete it
+    // Find the note to be Deleted and Delete it
     note = await Note.findByIdAndDelete(req.params.id);
     res.json({ Success: "The note has been deleted", note: note });
-  } catch {
-    return res.status(400).send("Internal server error");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Internal server error");
   }
 });
 
