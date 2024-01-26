@@ -13,14 +13,16 @@ import bcrypt from "bcrypt";
 
 const router = express.Router();
 
-//Route 1: Create a User using POST api/auth/createuser, (No login required)
+//ROUTE 1: Create a User using POST api/auth/createuser, (No login required)
 router.post(
   "/createuser",
   [
     //Validation Checks
-    body("username", "Username cannot be empty").notEmpty(),
+    body("username", "Username must be atleast 3 characters long!").isLength({
+      min: 3,
+    }),
     body("email", "Enter a valid email!").isEmail(),
-    body("password", "Password is required").notEmpty(),
+    body("password", "Password is required!").isLength({ min: 5 }),
   ],
   async (req, res) => {
     const result = validationResult(req);
@@ -29,7 +31,8 @@ router.post(
       //Logic to find out if a user with same email already exists
       let user = await User.findOne({ email: req.body.email }).exec();
       if (user) {
-        return res.send("Email is not unique!");
+        //400 Bad Request
+        return res.status(400).send("Email is not unique!");
       }
 
       // Hashing the password
@@ -51,57 +54,61 @@ router.post(
         },
       };
       const authToken = jwt.sign(tokenData, secSign);
-      console.log("Token is ", authToken);
       res.json({ authToken });
     }
 
-    ////If there are errors
+    ////If there are Validtion errors
     else {
-      res.send({ errors: result.array() });
+      // 400 Bad Request
+      res.status(400).send({ errors: result.array() });
     }
   }
 );
 
-//Route 2: User Authentication using POST api/auth/login, (No login required)
+//ROUTE 2: User Authentication using POST api/auth/login, (No login required)
 router.post(
   "/login",
   [
     body("email", "Enter a valid email!").isEmail(),
-    body("password", "Password is required").notEmpty(),
+    body("password", "Password must be at least 10 characters long!").isLength({
+      min: 5,
+    }),
   ],
   async (req, res) => {
     const result = validationResult(req);
-    if (!result.isEmpty()) {
-      return res.status(400).send("Please enter valid credentials!");
-    }
-    let user = await User.findOne({ email: req.body.email }).exec();
-    if (!user) {
-      return res.status(401).send("User not found.");
-    }
+    if (result.isEmpty()) {
+      let user = await User.findOne({ email: req.body.email }).exec();
+      if (!user) {
+        //404 User Not Found
+        return res.status(404).send("User not found.");
+      }
 
-    // Comparing the passwords
-    const compareResult = await bcrypt.compare(
-      req.body.password,
-      user.password
-    );
-    if (!compareResult) {
-      return res.status(401).send("Passwords don't match!");
+      // Comparing the passwords
+      const compareResult = await bcrypt.compare(
+        req.body.password,
+        user.password
+      );
+      if (!compareResult) {
+        return res.status(401).send("Passwords don't match!");
+      } else {
+        return res.send("User verified successfully!");
+      }
     } else {
-      return res.send("User verified successfully!");
+      //400 Bad Request
+      return res.status(400).send({ errors: result.array() });
     }
   }
 );
 
-//Route 3: Fetch Logged in user's data, (Loging required)
+//ROUTE 3: Fetch Logged in user's data, (Loging required)
 router.post("/getuserdata", fetchuser, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select("-password");
     if (!user) {
-      return res.status(401).send("User not found");
+      return res.status(404).send("User not found.");
     }
     res.send(user);
   } catch (error) {
-    console.error(error);
     res.status(500).send("Internal Server Error");
   }
 });

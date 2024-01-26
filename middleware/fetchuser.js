@@ -8,15 +8,15 @@ const fetchuser = async (req, res, next) => {
   const token = req.header("auth-token");
   // Check if not token is supplied:
   if (!token) {
-    return res.status(401).send({ msg: "No Token Provided" });
+    return res.status(401).send({ msg: "Token not provided. Please log in." });
   }
   try {
     const decodedData = jwt.verify(token, secSign);
-    console.log("Decoded data", decodedData);
     req.userId = decodedData.user.id;
   } catch (error) {
-    console.error("JWT Verification Error:", error);
-    return res.status(500).send({ msg: "Internal Server Error" });
+    return res
+      .status(500)
+      .send({ msg: "Please authenticate using a valid token" });
   }
 
   next();

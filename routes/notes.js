@@ -6,15 +6,18 @@ import fetchuser from "../middleware/fetchuser.js";
 
 const router = express.Router();
 
-//Route 1: create a note (Login Required)
+//ROUTE 1: Create a note (Login Required)
 router.post(
   "/createnote",
   [
     //Validation Checks
-    body("title", "Title cannot be empty").notEmpty().isLength({ min: 3 }),
-    body("description", "description cannot be empty")
-      .notEmpty()
-      .isLength({ min: 5 }),
+    body("title", "Title should be of minimum 3 characters long").isLength({
+      min: 3,
+    }),
+    body(
+      "description",
+      "Description should be of minimum 5 characters long"
+    ).isLength({ min: 5 }),
   ],
   fetchuser,
   async (req, res) => {
@@ -30,7 +33,8 @@ router.post(
         });
         res.json(note);
       } else {
-        res.send({ errors: result.array() });
+        // 400 Bad Request
+        res.status(400).send({ errors: result.array() });
       }
     } catch (error) {
       console.error(error);
@@ -39,7 +43,7 @@ router.post(
   }
 );
 
-//Route 2: fetch all the notes (Login Required)
+//ROUTE 2: Fetch all the notes (Login Required)
 router.get("/fetchallnotes", fetchuser, async (req, res) => {
   try {
     const notes = await Note.find({ user: req.userId });
@@ -50,7 +54,7 @@ router.get("/fetchallnotes", fetchuser, async (req, res) => {
   }
 });
 
-//Route 3: Update a note (Login Required)
+//ROUTE 3: Update a note (Login Required)
 router.put(
   "/updatenote/:id",
   [
@@ -80,7 +84,7 @@ router.put(
       //Check if the Note with the provided id exists
       let note = await Note.findById(req.params.id);
       if (!note) {
-        return res.status(400).json({ msg: "No note with that ID" });
+        return res.status(404).json({ msg: "No note with that ID" });
       }
 
       //Make sure the logged in User is the one who created the Note
@@ -100,12 +104,14 @@ router.put(
     }
   }
 );
+
+//ROUTE 4: Delete a note (Login Required)
 router.delete("/deletenote/:id", fetchuser, async (req, res) => {
   try {
     //Check if the Note with the provided id exists
     let note = await Note.findById(req.params.id);
     if (!note) {
-      return res.status(400).json({ msg: "No note with that ID" });
+      return res.status(404).json({ msg: "No note with that ID" });
     }
 
     //Make sure the logged in User is the one who created the Note
