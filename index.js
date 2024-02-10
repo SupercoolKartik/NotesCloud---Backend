@@ -1,11 +1,13 @@
 import express from "express";
 import connectToMongo from "./db.js";
+import cors from "cors";
 
 connectToMongo();
 
 const app = express();
 const PORT = 5000;
 
+app.use(cors()); // Using cors middleware to enable CORS
 app.use(express.json()); // Parse incoming requests data as JSON
 
 app.get("/", (req, res) => {

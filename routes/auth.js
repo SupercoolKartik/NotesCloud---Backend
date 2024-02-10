@@ -25,6 +25,7 @@ router.post(
     body("password", "Password is required!").isLength({ min: 5 }),
   ],
   async (req, res) => {
+    let success = false;
     try {
       const result = validationResult(req);
       ////If there are no errors
@@ -33,7 +34,7 @@ router.post(
         let user = await User.findOne({ email: req.body.email }).exec();
         if (user) {
           //400 Bad Request
-          return res.status(400).send("Email is not unique!");
+          return res.status(400).json({ error: "Email is not unique!" });
         }
 
         // Hashing the password
@@ -55,17 +56,18 @@ router.post(
           },
         };
         const authToken = jwt.sign(tokenData, secSign);
-        res.json({ authToken });
+        success = true;
+        res.json({ success, authToken });
       }
 
       ////If there are Validtion errors
       else {
         // 400 Bad Request
-        res.status(400).send({ errors: result.array() });
+        res.status(400).json({ errors: result.array() });
       }
     } catch (error) {
       console.log(error);
-      res.status(500).send("Internal Server Error");
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
@@ -75,20 +77,28 @@ router.post(
   "/login",
   [
     body("email", "Enter a valid email!").isEmail(),
-    body("password", "Password must be at least 10 characters long!").isLength({
+    body("password", "Password must be at least 5 characters long!").isLength({
       min: 5,
     }),
   ],
   async (req, res) => {
+    let success = false;
     try {
       const result = validationResult(req);
       if (result.isEmpty()) {
         let user = await User.findOne({ email: req.body.email }).exec();
         if (!user) {
           //404 User Not Found
-          return res.status(404).send("User not found.");
+          return res.status(404).json({ error: "User not found." });
         }
 
+        const tokenData = {
+          user: {
+            name: user.username,
+            id: user.id,
+          },
+        };
+        const authToken = jwt.sign(tokenData, secSign);
         // Comparing the passwords
         const compareResult = await bcrypt.compare(
           req.body.password,
@@ -96,32 +106,37 @@ router.post(
         );
 
         if (!compareResult) {
-          return res.status(401).send("Passwords don't match!");
+          return res.status(401).json({ error: "Passwords don't match!" });
         } else {
-          return res.send("User verified successfully!");
+          success = true;
+          return res.json({
+            success,
+            msg: "User verified successfully!",
+            authToken,
+          });
         }
       } else {
         //400 Bad Request
-        return res.status(400).send({ errors: result.array() });
+        return res.status(400).json({ errors: result.array() });
       }
     } catch (error) {
       console.error(error);
-      res.status(500).send("Internal Server Error");
+      res.status(500).json({ msg: "Internal Server Error" });
     }
   }
 );
 
-//ROUTE 3: Fetch Logged in user's data, (Loging required)
-router.post("/getuserdata", fetchuser, async (req, res) => {
+//ROUTE 3: Fetch Logged in user's data, (Login required)
+router.get("/getuserdata", fetchuser, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select("-password");
     if (!user) {
-      return res.status(404).send("User not found.");
+      return res.status(404).json({ error: "User not found." });
     }
-    res.send(user);
+    res.json(user);
   } catch (error) {
     console.log(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

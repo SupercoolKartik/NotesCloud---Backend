@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 const mongoURI = process.env.MONGO_URI;
+// console.log("mongoURI :", mongoURI);
+// console.log("process.env.MONGO_URI :", process.env.MONGO_URI);
 
 const connectToMongo = async () => {
   try {

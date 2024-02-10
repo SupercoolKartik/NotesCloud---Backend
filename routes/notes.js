@@ -25,20 +25,21 @@ router.post(
       const result = validationResult(req);
       if (result.isEmpty()) {
         // Creating a new Note
+        const tag = req.body.tag === "" ? "General" : req.body.tag;
         const note = await Note.create({
           user: req.userId,
           title: req.body.title,
           description: req.body.description,
-          tag: req.body.tag,
+          tag: tag,
         });
         res.json(note);
       } else {
         // 400 Bad Request
-        res.status(400).send({ errors: result.array() });
+        res.status(400).json({ errors: result.array() });
       }
     } catch (error) {
       console.error(error);
-      res.status(500).send("Internal Server Error");
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
@@ -50,7 +51,7 @@ router.get("/fetchallnotes", fetchuser, async (req, res) => {
     res.json(notes);
   } catch (error) {
     console.error(error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
@@ -59,10 +60,15 @@ router.put(
   "/updatenote/:id",
   [
     // Validation Checks
-    body("title", "Title cannot be empty").notEmpty().isLength({ min: 3 }),
-    body("description", "Description cannot be empty")
-      .notEmpty()
-      .isLength({ min: 5 }),
+    body("title", "Title should be of minimum 3 characters long").isLength({
+      min: 3,
+    }),
+    body(
+      "description",
+      "Description should be of minimum 5 characters long"
+    ).isLength({
+      min: 5,
+    }),
   ],
   fetchuser,
   async (req, res) => {
@@ -107,7 +113,7 @@ router.put(
     } catch (error) {
       // Handle other errors
       console.error(error);
-      res.status(500).send("Internal Server Error");
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
 );
@@ -133,7 +139,7 @@ router.delete("/deletenote/:id", fetchuser, async (req, res) => {
     res.json({ Success: "The note has been deleted", note: note });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Internal server error");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
